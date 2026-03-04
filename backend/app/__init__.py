@@ -1,0 +1,1 @@
+"""SellerVerse Backend - FastAPI + PostgreSQL"""
