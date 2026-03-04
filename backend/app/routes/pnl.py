@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..database import get_db
-from ..models import DailyPlatformMetric, Platform, CostEntry
+from ..models import DailyPlatformMetric, Platform, CostEntry, User
 from ..schemas import PnLResponse, WaterfallItem, CostBreakdownItem, DailyPnLItem
+from .auth import get_current_user
 
 router = APIRouter(prefix="/pnl", tags=["pnl"])
 
@@ -16,11 +17,14 @@ DbDep = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/")
-def get_pnl(db: DbDep) -> PnLResponse:
+def get_pnl(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> PnLResponse:
     today = date.today()
     start = today - timedelta(days=30)
 
-    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.is_active == True).all()]
+    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.user_id == current_user.id, Platform.is_active == True).all()]
 
     # Aggregate revenue, fees, returns from platform metrics
     totals = (
@@ -32,6 +36,7 @@ def get_pnl(db: DbDep) -> PnLResponse:
             func.coalesce(func.sum(DailyPlatformMetric.profit), 0).label("profit"),
         )
         .filter(
+            DailyPlatformMetric.user_id == current_user.id,
             DailyPlatformMetric.platform_id.in_(active_ids),
             DailyPlatformMetric.date >= start,
         )
@@ -49,7 +54,7 @@ def get_pnl(db: DbDep) -> PnLResponse:
             CostEntry.category,
             func.coalesce(func.sum(CostEntry.amount), 0).label("total"),
         )
-        .filter(CostEntry.date >= start)
+        .filter(CostEntry.user_id == current_user.id, CostEntry.date >= start)
         .group_by(CostEntry.category)
         .all()
     )
@@ -93,6 +98,7 @@ def get_pnl(db: DbDep) -> PnLResponse:
             func.sum(DailyPlatformMetric.profit).label("profit"),
         )
         .filter(
+            DailyPlatformMetric.user_id == current_user.id,
             DailyPlatformMetric.platform_id.in_(active_ids),
             DailyPlatformMetric.date >= start,
         )
@@ -108,7 +114,7 @@ def get_pnl(db: DbDep) -> PnLResponse:
             month=r.date.strftime("%b"),
             revenue=float(r.revenue),
             profit=float(r.profit),
-            margin=round(float(r.profit) / float(r.revenue) * 100, 1) if float(r.revenue) else 0,
+            margin=round(float(r.profit or 0) / float(r.revenue or 1) * 100, 1) if r.revenue else 0,
         )
         for r in daily_rows
     ]

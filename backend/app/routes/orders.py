@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 
 from ..database import get_db
-from ..models import Order, Product, Platform
+from ..models import Order, Product, Platform, User
 from ..schemas import OrderOut, OrderCreate, OrdersResponse
+from .auth import get_current_user
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -50,8 +51,9 @@ def list_orders(
     platform: Annotated[str | None, Query()] = None,
     sort_by: Annotated[str, Query()] = "date",
     sort_dir: Annotated[str, Query()] = "desc",
+    current_user: User = Depends(get_current_user)
 ) -> OrdersResponse:
-    query = db.query(Order).options(joinedload(Order.product), joinedload(Order.platform))
+    query = db.query(Order).options(joinedload(Order.product), joinedload(Order.platform)).filter(Order.user_id == current_user.id)
 
     # Search filter
     if search:
@@ -64,7 +66,7 @@ def list_orders(
 
     # Platform filter
     if platform and platform != "All":
-        query = query.join(Platform).filter(Platform.name == platform)
+        query = query.join(Platform).filter(Platform.name == platform, Platform.user_id == current_user.id)
 
     # Sorting
     sort_map = {
@@ -91,15 +93,19 @@ def list_orders(
 
 
 @router.post("/", status_code=201)
-def create_order(order: OrderCreate, db: DbDep) -> OrderOut:
-    product = db.query(Product).filter(Product.id == order.product_id).first()
+def create_order(
+    order: OrderCreate,
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> OrderOut:
+    product = db.query(Product).filter(Product.id == order.product_id, Product.user_id == current_user.id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    platform = db.query(Platform).filter(Platform.id == order.platform_id).first()
+    platform = db.query(Platform).filter(Platform.id == order.platform_id, Platform.user_id == current_user.id).first()
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
 
-    o = Order(**order.model_dump())
+    o = Order(**order.model_dump(), user_id=current_user.id)
     db.add(o)
     db.commit()
     db.refresh(o)

@@ -115,39 +115,39 @@ export default function Signup() {
                                 {/* Name */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-medium text-gray-300">Full Name</label>
-                                    <div className="relative">
-                                        <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                    <div className="relative flex items-center">
+                                        <User size={16} className="absolute text-gray-500" style={{ left: '1rem' }} />
                                         <input type="text" placeholder="Alex Johnson" value={form.name}
                                             onChange={e => set('name', e.target.value)} required
-                                            style={{ backgroundColor: '#0d0d14', borderColor: form.name ? '#7c3aed66' : '#3f3f4e' }}
-                                            className="w-full border rounded-xl py-3 pl-9 pr-4 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
+                                            style={{ backgroundColor: '#0d0d14', borderColor: form.name ? '#7c3aed66' : '#3f3f4e', paddingLeft: '3rem' }}
+                                            className="w-full border rounded-xl py-3 pr-4 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
                                     </div>
                                 </div>
 
                                 {/* Email */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-medium text-gray-300">Email Address</label>
-                                    <div className="relative">
-                                        <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                    <div className="relative flex items-center">
+                                        <Mail size={16} className="absolute text-gray-500" style={{ left: '1rem' }} />
                                         <input type="email" placeholder="you@business.com" value={form.email}
                                             onChange={e => set('email', e.target.value)} required
-                                            style={{ backgroundColor: '#0d0d14', borderColor: form.email ? '#7c3aed66' : '#3f3f4e' }}
-                                            className="w-full border rounded-xl py-3 pl-9 pr-4 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
+                                            style={{ backgroundColor: '#0d0d14', borderColor: form.email ? '#7c3aed66' : '#3f3f4e', paddingLeft: '3rem' }}
+                                            className="w-full border rounded-xl py-3 pr-4 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
                                     </div>
                                 </div>
 
                                 {/* Password */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-medium text-gray-300">Password</label>
-                                    <div className="relative">
-                                        <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                    <div className="relative flex items-center">
+                                        <Lock size={16} className="absolute text-gray-500" style={{ left: '1rem' }} />
                                         <input type={showPass ? 'text' : 'password'} placeholder="Min 8 characters"
                                             value={form.password} onChange={e => set('password', e.target.value)} required
-                                            style={{ backgroundColor: '#0d0d14', borderColor: form.password ? '#7c3aed66' : '#3f3f4e' }}
-                                            className="w-full border rounded-xl py-3 pl-9 pr-10 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
+                                            style={{ backgroundColor: '#0d0d14', borderColor: form.password ? '#7c3aed66' : '#3f3f4e', paddingLeft: '3rem' }}
+                                            className="w-full border rounded-xl py-3 pr-10 text-sm text-white outline-none focus:border-purple-500 placeholder-gray-600 transition-all" />
                                         <button type="button" onClick={() => setShowPass(v => !v)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
-                                            {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            className="absolute right-4 text-gray-500 hover:text-white transition-colors">
+                                            {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     </div>
                                     {/* Password strength bar */}

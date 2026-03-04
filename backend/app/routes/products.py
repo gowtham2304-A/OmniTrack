@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..database import get_db
-from ..models import Product, DailyProductSale, DailyPlatformMetric, Platform
+from ..models import Product, DailyProductSale, DailyPlatformMetric, Platform, User
 from ..schemas import ProductOut, ProductCreate, ProductUpdate, ProductPerformance, DailySale, PlatformBreakdown
+from .auth import get_current_user
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -16,22 +17,32 @@ DbDep = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/")
-def list_products(db: DbDep) -> list[ProductOut]:
-    return db.query(Product).filter(Product.is_active == True).order_by(Product.name).all()
+def list_products(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> list[ProductOut]:
+    return db.query(Product).filter(Product.user_id == current_user.id, Product.is_active == True).order_by(Product.name).all()
 
 
 @router.get("/performance")
-def get_product_performance(db: DbDep) -> list[ProductPerformance]:
+def get_product_performance(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> list[ProductPerformance]:
     today = date.today()
     start = today - timedelta(days=30)
-    products = db.query(Product).filter(Product.is_active == True).all()
+    products = db.query(Product).filter(Product.user_id == current_user.id, Product.is_active == True).all()
 
     result = []
     for prod in products:
         # Daily sales data
         daily_rows = (
             db.query(DailyProductSale)
-            .filter(DailyProductSale.product_id == prod.id, DailyProductSale.date >= start)
+            .filter(
+                DailyProductSale.user_id == current_user.id,
+                DailyProductSale.product_id == prod.id, 
+                DailyProductSale.date >= start
+            )
             .order_by(DailyProductSale.date)
             .all()
         )
@@ -91,11 +102,15 @@ def get_product_performance(db: DbDep) -> list[ProductPerformance]:
 
 
 @router.post("/", status_code=201)
-def create_product(product: ProductCreate, db: DbDep) -> ProductOut:
-    existing = db.query(Product).filter(Product.sku == product.sku).first()
+def create_product(
+    product: ProductCreate,
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> ProductOut:
+    existing = db.query(Product).filter(Product.user_id == current_user.id, Product.sku == product.sku).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"Product with SKU {product.sku} already exists")
-    p = Product(**product.model_dump())
+    p = Product(**product.model_dump(), user_id=current_user.id)
     db.add(p)
     db.commit()
     db.refresh(p)
@@ -103,8 +118,13 @@ def create_product(product: ProductCreate, db: DbDep) -> ProductOut:
 
 
 @router.put("/{product_id}")
-def update_product(product_id: int, updates: ProductUpdate, db: DbDep) -> ProductOut:
-    product = db.query(Product).filter(Product.id == product_id).first()
+def update_product(
+    product_id: int,
+    updates: ProductUpdate,
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> ProductOut:
+    product = db.query(Product).filter(Product.id == product_id, Product.user_id == current_user.id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -118,8 +138,12 @@ def update_product(product_id: int, updates: ProductUpdate, db: DbDep) -> Produc
 
 
 @router.get("/{product_id}")
-def get_product(product_id: int, db: DbDep) -> ProductOut:
-    product = db.query(Product).filter(Product.id == product_id).first()
+def get_product(
+    product_id: int,
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> ProductOut:
+    product = db.query(Product).filter(Product.id == product_id, Product.user_id == current_user.id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product

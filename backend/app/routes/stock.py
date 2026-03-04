@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Product
+from ..models import Product, User
 from ..schemas import StockItem
+from .auth import get_current_user
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -15,8 +16,11 @@ DbDep = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/")
-def get_stock(db: DbDep) -> list[StockItem]:
-    products = db.query(Product).filter(Product.is_active == True).all()
+def get_stock(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> list[StockItem]:
+    products = db.query(Product).filter(Product.user_id == current_user.id, Product.is_active == True).all()
 
     result = []
     for p in products:

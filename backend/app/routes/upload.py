@@ -8,8 +8,9 @@ import pandas as pd
 import io
 
 from ..database import get_db
-from ..models import CsvUpload, Order, Product, Platform
+from ..models import CsvUpload, Order, Product, Platform, User
 from ..schemas import CsvUploadOut
+from .auth import get_current_user
 from ..services.csv_parsers import (
     parse_amazon_orders,
     parse_meesho_orders,
@@ -35,6 +36,7 @@ def upload_csv(
     db: DbDep,
     file: Annotated[UploadFile, File(description="CSV or Excel file to upload")],
     platform: str = Query(default="auto", description="Platform slug for column parsing"),
+    current_user: User = Depends(get_current_user)
 ) -> CsvUploadOut:
     # Validate file type
     allowed_types = [
@@ -50,6 +52,7 @@ def upload_csv(
         filename=file.filename or "unknown",
         file_type=file.content_type or "unknown",
         status="processing",
+        user_id=current_user.id,
     )
     db.add(upload)
     db.commit()
@@ -82,20 +85,20 @@ def upload_csv(
                     if not order_id:
                         continue
 
-                    existing = db.query(Order).filter(Order.order_id == order_id).first()
+                    existing = db.query(Order).filter(Order.order_id == order_id, Order.user_id == current_user.id).first()
                     if existing:
                         continue
 
                     # Find matching product by SKU
                     sku = po.get("sku", "")
-                    product = db.query(Product).filter(Product.sku == sku).first() if sku else None
+                    product = db.query(Product).filter(Product.sku == sku, Product.user_id == current_user.id).first() if sku else None
                     if not product:
-                        product = db.query(Product).first()
+                        product = db.query(Product).filter(Product.user_id == current_user.id).first()
 
                     # Find platform record
-                    plat = db.query(Platform).filter(Platform.slug == platform).first()
+                    plat = db.query(Platform).filter(Platform.slug == platform, Platform.user_id == current_user.id).first()
                     if not plat:
-                        plat = db.query(Platform).filter(Platform.is_active == True).first()
+                        plat = db.query(Platform).filter(Platform.is_active == True, Platform.user_id == current_user.id).first()
 
                     if product and plat:
                         order = Order(
@@ -107,6 +110,7 @@ def upload_csv(
                             quantity=po.get("quantity", 1),
                             amount=po.get("gross_revenue", product.selling_price),
                             status="Delivered" if not po.get("return_status") else "Returned",
+                            user_id=current_user.id,
                         )
                         db.add(order)
                         orders_created += 1
@@ -129,19 +133,20 @@ def upload_csv(
                     if not order_id:
                         continue
 
-                    existing = db.query(Order).filter(Order.order_id == order_id).first()
+                    existing = db.query(Order).filter(Order.order_id == order_id, Order.user_id == current_user.id).first()
+
                     if existing:
                         continue
 
                     product_sku = str(row.get("product_sku", row.get("sku", "")))
-                    product = db.query(Product).filter(Product.sku == product_sku).first()
+                    product = db.query(Product).filter(Product.sku == product_sku, Product.user_id == current_user.id).first()
                     if not product:
-                        product = db.query(Product).first()
+                        product = db.query(Product).filter(Product.user_id == current_user.id).first()
 
                     platform_name = str(row.get("platform", ""))
-                    plat = db.query(Platform).filter(Platform.name.ilike(f"%{platform_name}%")).first()
+                    plat = db.query(Platform).filter(Platform.name.ilike(f"%{platform_name}%"), Platform.user_id == current_user.id).first()
                     if not plat:
-                        plat = db.query(Platform).filter(Platform.is_active == True).first()
+                        plat = db.query(Platform).filter(Platform.is_active == True, Platform.user_id == current_user.id).first()
 
                     if product and plat:
                         order = Order(
@@ -153,6 +158,7 @@ def upload_csv(
                             quantity=int(row.get("qty", row.get("quantity", 1))),
                             amount=float(row.get("amount", product.selling_price)),
                             status=str(row.get("status", "Processing")),
+                            user_id=current_user.id,
                         )
                         db.add(order)
                         orders_created += 1
@@ -178,9 +184,13 @@ def upload_csv(
 
 
 @router.get("/history")
-def get_upload_history(db: DbDep) -> list[CsvUploadOut]:
+def get_upload_history(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> list[CsvUploadOut]:
     return (
         db.query(CsvUpload)
+        .filter(CsvUpload.user_id == current_user.id)
         .order_by(CsvUpload.uploaded_at.desc())
         .limit(20)
         .all()

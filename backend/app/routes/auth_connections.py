@@ -24,9 +24,11 @@ class ConnectionResponse(BaseModel):
     last_synced_at: Optional[datetime]
 
 
-# Mock user dependency (replace with JWT extraction when multi-user is added)
-def get_current_user_id() -> int:
-    return 1
+from .auth import get_current_user
+from ..models import User
+
+def get_current_user_id(current_user: User = Depends(get_current_user)) -> int:
+    return current_user.id
 
 
 @router.post("/connect/{platform}")

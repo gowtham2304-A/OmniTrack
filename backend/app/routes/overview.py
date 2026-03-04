@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..database import get_db
-from ..models import DailyPlatformMetric, Platform
+from ..models import DailyPlatformMetric, Platform, User
 from ..schemas import KPIResponse, KPIValue, DailyOverview, RegionData
+from .auth import get_current_user
 
 router = APIRouter(prefix="/overview", tags=["overview"])
 
@@ -16,12 +17,15 @@ DbDep = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/kpis")
-def get_kpis(db: DbDep) -> KPIResponse:
+def get_kpis(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> KPIResponse:
     today = date.today()
     last_7_start = today - timedelta(days=7)
     prev_7_start = today - timedelta(days=14)
 
-    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.is_active == True).all()]
+    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.user_id == current_user.id, Platform.is_active == True).all()]
 
     def _sum_period(start: date, end: date):
         q = (
@@ -32,6 +36,7 @@ def get_kpis(db: DbDep) -> KPIResponse:
                 func.coalesce(func.sum(DailyPlatformMetric.returns_count), 0).label("returns"),
             )
             .filter(
+                DailyPlatformMetric.user_id == current_user.id,
                 DailyPlatformMetric.platform_id.in_(active_ids),
                 DailyPlatformMetric.date >= start,
                 DailyPlatformMetric.date < end,
@@ -73,10 +78,11 @@ def get_kpis(db: DbDep) -> KPIResponse:
 def get_daily_data(
     db: DbDep,
     days: Annotated[int, Query(ge=7, le=90)] = 30,
+    current_user: User = Depends(get_current_user)
 ) -> list[DailyOverview]:
     today = date.today()
     start = today - timedelta(days=days)
-    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.is_active == True).all()]
+    active_ids = [p.id for p in db.query(Platform.id).filter(Platform.user_id == current_user.id, Platform.is_active == True).all()]
 
     rows = (
         db.query(
@@ -87,6 +93,7 @@ def get_daily_data(
             func.sum(DailyPlatformMetric.returns_count).label("returns"),
         )
         .filter(
+            DailyPlatformMetric.user_id == current_user.id,
             DailyPlatformMetric.platform_id.in_(active_ids),
             DailyPlatformMetric.date >= start,
         )
@@ -115,7 +122,10 @@ def get_daily_data(
 
 
 @router.get("/regions")
-def get_regions(db: DbDep) -> list[RegionData]:
+def get_regions(
+    db: DbDep,
+    current_user: User = Depends(get_current_user)
+) -> list[RegionData]:
     today = date.today()
     start = today - timedelta(days=30)
 
@@ -128,12 +138,14 @@ def get_regions(db: DbDep) -> list[RegionData]:
     result = []
     for name, info in category_map.items():
         plats = db.query(Platform).filter(
+            Platform.user_id == current_user.id,
             Platform.category.in_(info["cats"]),
             Platform.is_active == True,
         ).all()
         plat_ids = [p.id for p in plats]
 
         rev = db.query(func.coalesce(func.sum(DailyPlatformMetric.revenue), 0)).filter(
+            DailyPlatformMetric.user_id == current_user.id,
             DailyPlatformMetric.platform_id.in_(plat_ids),
             DailyPlatformMetric.date >= start,
         ).scalar()

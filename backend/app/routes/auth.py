@@ -111,6 +111,11 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Automatically generate demo data for the new user!
+    from ..seed import seed_database
+    seed_database(user_id=user.id, db=db)
+
+
     token = create_access_token(subject=user.id)
     return {
         "message": "Account created successfully",

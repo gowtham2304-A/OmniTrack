@@ -68,28 +68,40 @@ STATUS_COLORS = {
 }
 
 
-def seed_database():
-    """Drop all tables and recreate with sample data."""
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+def seed_database(user_id: int = None, db: Session = None):
+    """
+    Seed the database with realistic sample data.
+    If user_id is provided, it increments/adds data ONLY for that user.
+    If db is provided, it uses that session instead of creating a new one.
+    """
+    own_db = False
+    if db is None:
+        db = SessionLocal()
+        own_db = True
 
-    db = SessionLocal()
     try:
-        # ── System User ───────────────────────────────
-        admin_user = User(
-            email="admin@sellerverse.com",
-            password_hash=get_password_hash("admin123"),
-            name="SellerVerse Admin",
-            plan="premium"
-        )
-        db.add(admin_user)
-        db.flush()
-        print(f"✓ Seeded admin user: {admin_user.email}")
+        if user_id is None:
+            # Global system reset/seed
+            Base.metadata.drop_all(bind=engine)
+            Base.metadata.create_all(bind=engine)
 
+            # ── System User ───────────────────────────────
+            admin_user = User(
+                email="admin@sellerverse.com",
+                password_hash=get_password_hash("admin123"),
+                name="SellerVerse Admin",
+                plan="free"
+            )
+            db.add(admin_user)
+            db.flush()
+            user_id = admin_user.id
+            print(f"✓ Seeded admin user: {admin_user.email}")
+        
         # ── Platforms ─────────────────────────────────
         platform_map: dict[str, Platform] = {}
         for p_data in PLATFORMS_DATA:
             p = Platform(
+                user_id=user_id,
                 slug=p_data["slug"], name=p_data["name"], color=p_data["color"],
                 icon=p_data["icon"], category=p_data["category"],
                 fee_rate=p_data["fee_rate"], avg_return_rate=p_data["avg_return_rate"],
@@ -98,16 +110,20 @@ def seed_database():
             db.add(p)
             db.flush()
             platform_map[p.slug] = p
-        print(f"✓ Seeded {len(platform_map)} platforms")
+        print(f"✓ Seeded {len(platform_map)} platforms for user {user_id}")
 
         # ── Products ──────────────────────────────────
         product_list: list[Product] = []
         for pr_data in PRODUCTS_DATA:
-            pr = Product(**pr_data, daily_sales_rate=round(5 + random.random() * 20, 1))
+            pr = Product(
+                user_id=user_id,
+                **pr_data, 
+                daily_sales_rate=round(5 + random.random() * 20, 1)
+            )
             db.add(pr)
             db.flush()
             product_list.append(pr)
-        print(f"✓ Seeded {len(product_list)} products")
+        print(f"✓ Seeded {len(product_list)} products for user {user_id}")
 
         # ── Daily Platform Metrics (30 days) ──────────
         today = date.today()
@@ -130,6 +146,7 @@ def seed_database():
                 profit = revenue - fees - cogs - return_value
 
                 metric = DailyPlatformMetric(
+                    user_id=user_id,
                     platform_id=plat.id, date=d,
                     orders_count=orders_count, revenue=revenue,
                     fees=fees, cogs=cogs, returns_count=returns_count,
@@ -150,6 +167,7 @@ def seed_database():
                 sales = max(1, base_sales)
                 rev = sales * prod.selling_price
                 ds = DailyProductSale(
+                    user_id=user_id,
                     product_id=prod.id, date=d,
                     sales_count=sales, revenue=rev,
                 )
@@ -169,7 +187,8 @@ def seed_database():
             order_dt = datetime.utcnow() - timedelta(hours=random.randint(0, 72))
 
             order = Order(
-                order_id=f"ORD-{10000 + i}",
+                user_id=user_id,
+                order_id=f"ORD-{user_id}-{10000 + i}",
                 product_id=prod.id, platform_id=plat.id,
                 customer_name=f"Customer {1000 + i}",
                 city=random.choice(CITIES),
@@ -187,21 +206,22 @@ def seed_database():
             d = today - timedelta(days=day_offset)
             for category, base in [("shipping", 4000), ("marketing", 6000), ("packaging", 1500)]:
                 amount = round(base * (0.8 + random.random() * 0.4))
-                ce = CostEntry(date=d, category=category, amount=amount)
+                ce = CostEntry(user_id=user_id, date=d, category=category, amount=amount)
                 db.add(ce)
                 cost_count += 1
 
         print(f"✓ Seeded {cost_count} cost entries")
 
         db.commit()
-        print("\n🚀 Database seeded successfully!")
+        print(f"\n🚀 Database seeded successfully for user {user_id}!")
 
     except Exception as e:
         db.rollback()
         print(f"❌ Error seeding database: {e}")
         raise
     finally:
-        db.close()
+        if own_db:
+            db.close()
 
 
 if __name__ == "__main__":

@@ -80,7 +80,8 @@ class Platform(Base):
     __tablename__ = "platforms"
 
     id: int = Column(Integer, primary_key=True, index=True)
-    slug: str = Column(String(50), unique=True, nullable=False, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    slug: str = Column(String(50), nullable=False, index=True)
     name: str = Column(String(100), nullable=False)
     color: str = Column(String(10), nullable=False, default="#7c3aed")
     icon: str = Column(String(10), nullable=False, default="📦")
@@ -90,8 +91,10 @@ class Platform(Base):
     is_active: bool = Column(Boolean, default=True)
     created_at: datetime = Column(DateTime, default=datetime.utcnow)
 
+    # Note: removed unique=True from slug because each user can have 'amazon'
     daily_metrics = relationship("DailyPlatformMetric", back_populates="platform")
     orders = relationship("Order", back_populates="platform")
+    user = relationship("User")
 
 
 # ── Products ─────────────────────────────────────────────
@@ -99,8 +102,9 @@ class Product(Base):
     __tablename__ = "products"
 
     id: int = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     name: str = Column(String(200), nullable=False)
-    sku: str = Column(String(100), unique=True, nullable=False, index=True)
+    sku: str = Column(String(100), nullable=False, index=True)
     category: str = Column(String(100), nullable=False)
     cost_price: float = Column(Float, nullable=False)
     selling_price: float = Column(Float, nullable=False)
@@ -112,6 +116,7 @@ class Product(Base):
 
     orders = relationship("Order", back_populates="product")
     daily_sales = relationship("DailyProductSale", back_populates="product")
+    user = relationship("User")
 
 
 # ── Daily Platform Metrics ───────────────────────────────
@@ -119,6 +124,7 @@ class DailyPlatformMetric(Base):
     __tablename__ = "daily_platform_metrics"
 
     id: int = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     platform_id: int = Column(Integer, ForeignKey("platforms.id"), nullable=False)
     date: date = Column(Date, nullable=False, index=True)
     orders_count: int = Column(Integer, default=0)
@@ -138,6 +144,7 @@ class DailyProductSale(Base):
     __tablename__ = "daily_product_sales"
 
     id: int = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     product_id: int = Column(Integer, ForeignKey("products.id"), nullable=False)
     date: date = Column(Date, nullable=False, index=True)
     sales_count: int = Column(Integer, default=0)
@@ -151,7 +158,8 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: int = Column(Integer, primary_key=True, index=True)
-    order_id: str = Column(String(100), unique=True, nullable=False, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    order_id: str = Column(String(100), nullable=False, index=True)
     product_id: int = Column(Integer, ForeignKey("products.id"), nullable=False)
     platform_id: int = Column(Integer, ForeignKey("platforms.id"), nullable=False)
     customer_name: str = Column(String(200), default="")
@@ -171,6 +179,7 @@ class CsvUpload(Base):
     __tablename__ = "csv_uploads"
 
     id: int = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     filename: str = Column(String(255), nullable=False)
     file_type: str = Column(String(50), default="csv")
     rows_processed: int = Column(Integer, default=0)
@@ -185,6 +194,7 @@ class CostEntry(Base):
     __tablename__ = "cost_entries"
 
     id: int = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     date: date = Column(Date, nullable=False, index=True)
     category: str = Column(String(50), nullable=False)
     amount: float = Column(Float, nullable=False)
