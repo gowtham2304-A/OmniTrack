@@ -43,3 +43,4 @@ tzlocal==5.3.1
 uvicorn==0.41.0
 watchfiles==1.1.1
 websockets==16.0
+bcrypt==4.1.2
