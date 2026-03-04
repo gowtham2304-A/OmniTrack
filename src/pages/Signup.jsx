@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Zap, CheckCircle, ArrowRight } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const plans = [
     { id: 'free', label: 'Free', desc: 'Up to 3 platforms · 1K orders/mo', color: '#5a5a6e' },

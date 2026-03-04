@@ -5,7 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useBackendStatus } from '../../hooks/useApiData';
 import NotificationBell from '../ui/NotificationBell';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function GlobalSearch() {
     const [query, setQuery] = useState('');

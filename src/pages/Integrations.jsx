@@ -4,7 +4,7 @@ import { Plug, AlertCircle, CheckCircle, Plus, Key, Link as LinkIcon, RefreshCw,
 import GlassCard from '../components/ui/GlassCard';
 import { useToast } from '../components/ui/Toast';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const container = {
     hidden: { opacity: 0 },
@@ -230,8 +230,8 @@ export default function Integrations() {
                         key={key}
                         onClick={() => setFilterCategory(key)}
                         className={`px-4 py-2 text-xs font-medium rounded-xl transition-all ${filterCategory === key
-                                ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
-                                : 'bg-gray-800/30 text-gray-400 border border-gray-700/30 hover:text-white hover:bg-gray-700/30'
+                            ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
+                            : 'bg-gray-800/30 text-gray-400 border border-gray-700/30 hover:text-white hover:bg-gray-700/30'
                             }`}
                     >
                         {label}

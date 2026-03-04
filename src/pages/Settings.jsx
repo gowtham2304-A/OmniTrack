@@ -7,7 +7,7 @@ import {
 import GlassCard from '../components/ui/GlassCard';
 import { useToast } from '../components/ui/Toast';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const container = {
     hidden: { opacity: 0 },

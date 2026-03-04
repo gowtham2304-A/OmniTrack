@@ -45,7 +45,8 @@ export default function PnL() {
             if (startDate) params.set('start_date', startDate);
             if (endDate) params.set('end_date', endDate);
 
-            const res = await fetch(`http://localhost:8000/export/pnl?${params}`);
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${API}/export/pnl?${params}`);
             if (!res.ok) throw new Error('Export failed');
 
             const blob = await res.blob();

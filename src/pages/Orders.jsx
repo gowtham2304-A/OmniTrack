@@ -98,7 +98,8 @@ export default function Orders() {
             if (platformFilter !== 'All') params.set('platform', platformFilter.toLowerCase().replace(' ', ''));
             if (statusFilter !== 'All') params.set('status', statusFilter);
 
-            const res = await fetch(`http://localhost:8000/export/orders?${params}`);
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${API}/export/orders?${params}`);
             if (!res.ok) throw new Error('Export failed');
 
             const blob = await res.blob();
@@ -202,8 +203,8 @@ export default function Orders() {
                                 key={s}
                                 onClick={() => { setStatusFilter(s); setPage(1); }}
                                 className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${statusFilter === s
-                                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                        : 'text-gray-500 hover:text-white bg-gray-800/30 border border-gray-700/20'
+                                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                    : 'text-gray-500 hover:text-white bg-gray-800/30 border border-gray-700/20'
                                     }`}
                             >
                                 {s}
