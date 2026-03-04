@@ -36,19 +36,35 @@ def sync_dashboard_metrics(user_id: int, db: Session):
     try:
         from sqlalchemy import func
         from ..models import DailyPlatformMetric, DailyProductSale, Order, Platform, Product
+        from datetime import datetime, date
         
+        # Helper to parse dates from various formats (SQLite returns strings often)
+        def _to_date(val):
+            if not val: return None
+            if isinstance(val, (date, datetime)): return val.date() if isinstance(val, datetime) else val
+            try: return datetime.strptime(str(val)[:10], "%Y-%m-%d").date()
+            except: 
+                try: return datetime.fromisoformat(str(val).replace('Z', '+00:00')).date()
+                except: return None
+
         # 1. Sync Platform Metrics
-        dates = db.query(func.date(Order.order_date)).filter(Order.user_id == user_id).distinct().all()
-        for (d_val,) in dates:
-            if not d_val: continue
-            d = d_val if not isinstance(d_val, str) else datetime.strptime(d_val[:10], "%Y-%m-%d").date()
+        # Get all distinct dates for this user
+        all_order_dates = db.query(Order.order_date).filter(Order.user_id == user_id).distinct().all()
+        unique_dates = { _to_date(d[0]) for d in all_order_dates if d[0] }
+        
+        for d in unique_dates:
+            if not d: continue
             
             # Aggregate platform stats for this day
+            # Use filter with python date object which SQLAlchemy handles well
             p_stats = db.query(
                 Order.platform_id,
                 func.count(Order.id).label("cnt"),
                 func.sum(Order.amount).label("rev")
-            ).filter(Order.user_id == user_id, func.date(Order.order_date) == d).group_by(Order.platform_id).all()
+            ).filter(
+                Order.user_id == user_id, 
+                func.date(Order.order_date) == str(d)
+            ).group_by(Order.platform_id).all()
             
             for pid, cnt, rev in p_stats:
                 plat = db.query(Platform).filter(Platform.id == pid).first()
@@ -57,41 +73,43 @@ def sync_dashboard_metrics(user_id: int, db: Session):
                 # Activate platform if it has data
                 if not plat.is_active: plat.is_active = True
                 
-                fees = (rev or 0) * plat.fee_rate
-                cogs = (rev or 0) * 0.40
-                ret_cnt = round(cnt * plat.avg_return_rate)
-                ret_val = (rev or 0) * plat.avg_return_rate
+                fees = float(rev or 0) * plat.fee_rate
+                cogs = float(rev or 0) * 0.40
+                ret_cnt = round(float(cnt) * plat.avg_return_rate)
+                ret_val = float(rev or 0) * plat.avg_return_rate
                 
                 m = db.query(DailyPlatformMetric).filter_by(user_id=user_id, platform_id=pid, date=d).first()
                 if not m:
                     m = DailyPlatformMetric(user_id=user_id, platform_id=pid, date=d)
                     db.add(m)
                 
-                m.orders_count = cnt
-                m.revenue = rev or 0
+                m.orders_count = int(cnt)
+                m.revenue = float(rev or 0)
                 m.fees = fees
                 m.cogs = cogs
                 m.returns_count = ret_cnt
                 m.return_value = ret_val
-                m.profit = (rev or 0) - fees - cogs - ret_val
-                m.avg_order_value = rev/cnt if cnt else 0
+                m.profit = float(rev or 0) - fees - cogs - ret_val
+                m.avg_order_value = float(rev)/float(cnt) if cnt else 0
 
         # 2. Sync Product Metrics
         prod_stats = db.query(
             Order.product_id,
-            func.date(Order.order_date).label("d"),
+            Order.order_date,
             func.sum(Order.quantity).label("qty"),
             func.sum(Order.amount).label("rev")
-        ).filter(Order.user_id == user_id).group_by(Order.product_id, "d").all()
+        ).filter(Order.user_id == user_id).group_by(Order.product_id, Order.order_date).all()
         
         for prid, d_val, qty, rev in prod_stats:
-            d = d_val if not isinstance(d_val, str) else datetime.strptime(d_val[:10], "%Y-%m-%d").date()
+            d = _to_date(d_val)
+            if not d: continue
+            
             ps = db.query(DailyProductSale).filter_by(user_id=user_id, product_id=prid, date=d).first()
             if not ps:
                 ps = DailyProductSale(user_id=user_id, product_id=prid, date=d)
                 db.add(ps)
-            ps.sales_count = qty or 0
-            ps.revenue = rev or 0
+            ps.sales_count = int(qty or 0)
+            ps.revenue = float(rev or 0)
 
         db.commit()
     except Exception as e:
