@@ -7,6 +7,15 @@ DATABASE_URL = os.getenv(
     "sqlite:///./sellerverse.db",
 )
 
+# Robust handling for Postgres strings (especially for Supabase on Render)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Force SSL for Postgres connections to prevent connection resets
+if DATABASE_URL.startswith("postgresql") and "sslmode" not in DATABASE_URL:
+    sep = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL += f"{sep}sslmode=require"
+
 # SQLite needs connect_args for multi-threading in FastAPI
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 

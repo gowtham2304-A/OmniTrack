@@ -32,18 +32,25 @@ def _get_or_create_fernet_key() -> bytes:
 
     # 2. Check persistent key file (development)
     key_path = os.path.abspath(_FERNET_KEY_FILE)
-    if os.path.exists(key_path):
-        with open(key_path, "rb") as f:
-            key = f.read().strip()
-            if key:
-                return key
-
-    # 3. Generate a new key and save it
-    key = Fernet.generate_key()
-    with open(key_path, "wb") as f:
-        f.write(key)
-    logger.info("🔑 New Fernet key generated and saved to %s", key_path)
-    return key
+    try:
+        if os.path.exists(key_path):
+            with open(key_path, "rb") as f:
+                key = f.read().strip()
+                if key:
+                    return key
+        
+        # 3. Generate a new key and save it (only if we have write access)
+        key = Fernet.generate_key()
+        try:
+            with open(key_path, "wb") as f:
+                f.write(key)
+            logger.info("🔑 New Fernet key generated and saved to %s", key_path)
+        except (IOError, PermissionError):
+            logger.warning("⚠️ Could not write Fernet key to disk. Using ephemeral key.")
+        return key
+    except Exception as e:
+        logger.error("❌ Fernet initialization error: %s. Using safe fallback.", e)
+        return Fernet.generate_key()
 
 
 _fernet = Fernet(_get_or_create_fernet_key())
