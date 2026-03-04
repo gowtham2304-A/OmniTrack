@@ -180,35 +180,72 @@ def upload_csv(
 
         # ── Generic fallback parsing ─────────────────────
         if not parsed_orders:
-            # Normalize columns
-            df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('-', '_').str.replace('.', '_')
-            cols = set(df.columns)
+            import uuid
+            import re
             
-            # Map common columns
-            id_col = next((c for c in ['order_id', 'id', 'sub_order_no', 'amazon_order_id', 'order_number'] if c in cols), None)
-            sku_col = next((c for c in ['sku', 'product_sku', 'style_id', 'item_code', 'variant_sku'] if c in cols), None)
-            amt_col = next((c for c in ['amount', 'price', 'selling_price', 'total', 'item_price', 'gross_revenue'] if c in cols), None)
-            qty_col = next((c for c in ['qty', 'quantity', 'quantity_purchased', 'item_count'] if c in cols), None)
-            date_col = next((c for c in ['date', 'order_date', 'purchase_date', 'created_at', 'timestamp'] if c in cols), None)
+            # Normalize columns to lowercase and remove weird chars
+            original_columns = df.columns
+            df.columns = df.columns.astype(str).str.lower().str.strip().str.replace(r'[\s\-.]', '_', regex=True)
+            cols = list(df.columns)
             
-            if id_col:
-                for _, row in df.iterrows():
-                    o_date = datetime.utcnow()
-                    if date_col:
-                        try:
-                            o_date = pd.to_datetime(row[date_col]).to_pydatetime()
-                        except: pass
+            # Helper to loosely match column names based on keyword fragments
+            def find_col(keywords):
+                for c in cols:
+                    if any(k in c for k in keywords):
+                        return c
+                return None
 
-                    parsed_orders.append({
-                        'order_id': str(row.get(id_col, "")),
-                        'sku': str(row.get(sku_col, "GENERAL")) if sku_col else "GENERAL",
-                        'gross_revenue': float(row.get(amt_col, 0)),
-                        'quantity': int(row.get(qty_col, 1)) if qty_col else 1,
-                        'customer_name': str(row.get('customer', row.get('buyer', row.get('customer_name', 'Customer')))),
-                        'city': str(row.get('city', row.get('destination', 'Unknown'))),
-                        'status': str(row.get('status', 'Delivered')),
-                        'order_date': o_date
-                    })
+            id_col = find_col(['order_id', 'id', 'sub_order', 'no', 'number', 'ref', 'txn'])
+            sku_col = find_col(['sku', 'product', 'style', 'code', 'item'])
+            amt_col = find_col(['amount', 'price', 'total', 'revenue', 'value', 'sale', 'mrp', 'cost'])
+            qty_col = find_col(['qty', 'quantity', 'count', 'units'])
+            date_col = find_col(['date', 'time', 'created', 'stamp'])
+            customer_col = find_col(['customer', 'buyer', 'name', 'client', 'user'])
+            city_col = find_col(['city', 'destination', 'location', 'region', 'state'])
+            status_col = find_col(['status', 'state', 'condition'])
+
+            for index, row in df.iterrows():
+                # Extract properties safely
+                def get_val(col_name, default):
+                    if col_name and pd.notna(row.get(col_name)):
+                        return row[col_name]
+                    return default
+                
+                # Generate unique ID if we can't find one
+                raw_id = get_val(id_col, "")
+                order_id_val = str(raw_id).strip()
+                if not order_id_val or order_id_val.lower() == 'nan':
+                    order_id_val = f"IMP-{uuid.uuid4().hex[:8].upper()}"
+                    
+                o_date = datetime.utcnow()
+                raw_date = get_val(date_col, None)
+                if raw_date and str(raw_date).lower() != 'nan':
+                    try:
+                        o_date = pd.to_datetime(raw_date).to_pydatetime()
+                    except: pass
+
+                # Extract amount (strip currency symbols if present)
+                raw_amt = str(get_val(amt_col, 0))
+                clean_amt = re.sub(r'[^\d.]', '', raw_amt)
+                try: amt = float(clean_amt) if clean_amt else 0.0
+                except: amt = 0.0
+
+                # Extract quantity safely
+                raw_qty = str(get_val(qty_col, 1))
+                clean_qty = re.sub(r'[^\d]', '', raw_qty)
+                try: qty = int(clean_qty) if clean_qty else 1
+                except: qty = 1
+
+                parsed_orders.append({
+                    'order_id': order_id_val,
+                    'sku': str(get_val(sku_col, "GENERAL")),
+                    'gross_revenue': amt,
+                    'quantity': qty,
+                    'customer_name': str(get_val(customer_col, "Customer")),
+                    'city': str(get_val(city_col, "Unknown")),
+                    'status': str(get_val(status_col, "Completed")),
+                    'order_date': o_date
+                })
 
         # ── Save Orders ──────────────────────────────────
         for po in parsed_orders:
