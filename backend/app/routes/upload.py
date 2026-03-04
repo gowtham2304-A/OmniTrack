@@ -95,17 +95,6 @@ def upload_csv(
     platform: str = Query(default="auto", description="Platform slug for column parsing"),
     current_user: User = Depends(get_current_user)
 ) -> CsvUploadOut:
-    # Validate file type
-    allowed_types = [
-        "text/csv",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-        "text/plain", # Some CSVs come as text/plain
-    ]
-    if file.content_type not in allowed_types and not file.filename.endswith((".csv", ".xlsx", ".xls")):
-        # We'll allow it anyway if the extension matches
-        pass
-
     # Create upload record
     upload = CsvUpload(
         filename=file.filename or "unknown",
@@ -133,15 +122,18 @@ def upload_csv(
         target_platform_slug = platform if platform != "auto" else "other"
         plat = db.query(Platform).filter(Platform.slug == target_platform_slug, Platform.user_id == current_user.id).first()
         if not plat:
-            # Create the platform if it doesn't exist
             plat = Platform(
                 user_id=current_user.id,
                 slug=target_platform_slug,
-                name=target_platform_slug.capitalize(),
+                name=target_platform_slug.replace('-', ' ').capitalize(),
                 is_active=True
             )
             db.add(plat)
-            db.flush()
+        else:
+            # Ensure the platform is active so it shows on the dashboard
+            plat.is_active = True
+        
+        db.flush()
 
         # ── Platform-specific parsing ────────────────────
         parsed_orders = []
@@ -158,27 +150,36 @@ def upload_csv(
                 import os
                 if os.path.exists(temp_path): os.remove(temp_path)
 
-        # ── Generic fallback parsing if no platform specific orders ────
+        # ── Generic fallback parsing ─────────────────────
         if not parsed_orders:
-            df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('-', '_')
+            # Normalize columns
+            df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('-', '_').str.replace('.', '_')
             cols = set(df.columns)
             
             # Map common columns
-            id_col = next((c for c in ['order_id', 'id', 'sub_order_no', 'amazon_order_id'] if c in cols), None)
-            sku_col = next((c for c in ['sku', 'product_sku', 'style_id', 'item_code'] if c in cols), None)
-            amt_col = next((c for c in ['amount', 'price', 'selling_price', 'total', 'item_price'] if c in cols), None)
-            qty_col = next((c for c in ['qty', 'quantity', 'quantity_purchased'] if c in cols), None)
+            id_col = next((c for c in ['order_id', 'id', 'sub_order_no', 'amazon_order_id', 'order_number'] if c in cols), None)
+            sku_col = next((c for c in ['sku', 'product_sku', 'style_id', 'item_code', 'variant_sku'] if c in cols), None)
+            amt_col = next((c for c in ['amount', 'price', 'selling_price', 'total', 'item_price', 'gross_revenue'] if c in cols), None)
+            qty_col = next((c for c in ['qty', 'quantity', 'quantity_purchased', 'item_count'] if c in cols), None)
+            date_col = next((c for c in ['date', 'order_date', 'purchase_date', 'created_at', 'timestamp'] if c in cols), None)
             
             if id_col:
                 for _, row in df.iterrows():
+                    o_date = datetime.utcnow()
+                    if date_col:
+                        try:
+                            o_date = pd.to_datetime(row[date_col]).to_pydatetime()
+                        except: pass
+
                     parsed_orders.append({
                         'order_id': str(row.get(id_col, "")),
                         'sku': str(row.get(sku_col, "GENERAL")) if sku_col else "GENERAL",
                         'gross_revenue': float(row.get(amt_col, 0)),
                         'quantity': int(row.get(qty_col, 1)) if qty_col else 1,
-                        'customer_name': str(row.get('customer', row.get('buyer', 'Customer'))),
+                        'customer_name': str(row.get('customer', row.get('buyer', row.get('customer_name', 'Customer')))),
                         'city': str(row.get('city', row.get('destination', 'Unknown'))),
-                        'status': str(row.get('status', 'Delivered'))
+                        'status': str(row.get('status', 'Delivered')),
+                        'order_date': o_date
                     })
 
         # ── Save Orders ──────────────────────────────────
@@ -194,16 +195,24 @@ def upload_csv(
             sku = po.get("sku", "GENERAL")
             product = db.query(Product).filter(Product.sku == sku, Product.user_id == current_user.id).first()
             if not product:
+                rev = float(po.get("gross_revenue", 0))
                 product = Product(
                     user_id=current_user.id,
                     sku=sku,
                     name=po.get("product_name", f"Product {sku}"),
                     category="Uncategorized",
-                    cost_price=float(po.get("gross_revenue", 0)) * 0.4,
-                    selling_price=float(po.get("gross_revenue", 0)),
+                    cost_price=rev * 0.4,
+                    selling_price=rev or 499.0, # fallback if 0
                 )
                 db.add(product)
                 db.flush()
+
+            order_dt = po.get("order_date")
+            if not order_dt:
+                order_dt = datetime.utcnow()
+            elif isinstance(order_dt, str):
+                try: order_dt = pd.to_datetime(order_dt).to_pydatetime()
+                except: order_dt = datetime.utcnow()
 
             order = Order(
                 order_id=order_id,
@@ -212,20 +221,21 @@ def upload_csv(
                 customer_name=po.get("customer_name", "Customer"),
                 city=po.get("city", "Unknown"),
                 quantity=po.get("quantity", 1),
-                amount=po.get("gross_revenue", product.selling_price),
+                amount=float(po.get("gross_revenue", product.selling_price)),
                 status=po.get("status", "Delivered"),
                 user_id=current_user.id,
+                order_date=order_dt
             )
             db.add(order)
             orders_created += 1
 
         db.commit()
 
-        # 🚀 Sync the dashboard metrics immediately
+        # 🚀 Sync metrics
         if orders_created > 0:
             sync_dashboard_metrics(current_user.id, db)
 
-        # Update upload record
+        # Success
         upload.rows_processed = rows_processed
         upload.status = "success"
         upload.completed_at = datetime.utcnow()
