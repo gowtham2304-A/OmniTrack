@@ -8,7 +8,8 @@ User ID: 2 | Email: xyz@gmail.com
   Orders: 0, Metrics: 0, Uploads: 0
 ----------------------------------------
 User ID: 3 | Email: mantripragadagowtham@gmail.com
-  Orders: 0, Metrics: 0, Uploads: 2
+  Orders: 5, Metrics: 5, Uploads: 3
+    Upload 6: Status: success, Rows: 5, Err: None
     Upload 5: Status: error, Rows: 0, Err: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
     Upload 4: Status: processing, Rows: 0, Err: None
 ----------------------------------------

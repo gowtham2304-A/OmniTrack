@@ -34,11 +34,10 @@ PLATFORM_PARSERS = {
 def sync_dashboard_metrics(user_id: int, db: Session):
     """Deep synchronization of all KPI tables based on the Orders table."""
     try:
-        from sqlalchemy import func
         from ..models import DailyPlatformMetric, DailyProductSale, Order, Platform, Product
         from datetime import datetime, date
+        from collections import defaultdict
         
-        # Helper to parse dates from various formats (SQLite returns strings often)
         def _to_date(val):
             if not val: return None
             if isinstance(val, (date, datetime)): return val.date() if isinstance(val, datetime) else val
@@ -46,71 +45,87 @@ def sync_dashboard_metrics(user_id: int, db: Session):
             except: 
                 try: return datetime.fromisoformat(str(val).replace('Z', '+00:00')).date()
                 except: return None
-
-        # 1. Sync Platform Metrics
-        # Get all distinct dates for this user
-        all_order_dates = db.query(Order.order_date).filter(Order.user_id == user_id).distinct().all()
-        unique_dates = { _to_date(d[0]) for d in all_order_dates if d[0] }
+                
+        # Load all orders at once for the user (fast for 20-30k rows)
+        all_orders = db.query(Order).filter(Order.user_id == user_id).all()
+        platforms_dict = {p.id: p for p in db.query(Platform).filter(Platform.user_id == user_id).all()}
         
-        for d in unique_dates:
+        # Aggregation dictionaries
+        # (platform_id, date) -> dict of stats
+        platform_stats = defaultdict(lambda: {'cnt': 0, 'rev': 0.0})
+        # (product_id, date) -> dict of stats
+        product_stats = defaultdict(lambda: {'qty': 0, 'rev': 0.0})
+        
+        # Single pass aggregation logic
+        for o in all_orders:
+            d = _to_date(o.order_date)
             if not d: continue
             
-            # Aggregate platform stats for this day
-            # Use filter with python date object which SQLAlchemy handles well
-            p_stats = db.query(
-                Order.platform_id,
-                func.count(Order.id).label("cnt"),
-                func.sum(Order.amount).label("rev")
-            ).filter(
-                Order.user_id == user_id, 
-                func.date(Order.order_date) == str(d)
-            ).group_by(Order.platform_id).all()
+            # Platform aggregates
+            p_key = (o.platform_id, d)
+            platform_stats[p_key]['cnt'] += 1
+            platform_stats[p_key]['rev'] += float(o.amount or 0)
             
-            for pid, cnt, rev in p_stats:
-                plat = db.query(Platform).filter(Platform.id == pid).first()
-                if not plat: continue
-                
-                # Activate platform if it has data
-                if not plat.is_active: plat.is_active = True
-                
-                fees = float(rev or 0) * plat.fee_rate
-                cogs = float(rev or 0) * 0.40
-                ret_cnt = round(float(cnt) * plat.avg_return_rate)
-                ret_val = float(rev or 0) * plat.avg_return_rate
-                
-                m = db.query(DailyPlatformMetric).filter_by(user_id=user_id, platform_id=pid, date=d).first()
-                if not m:
-                    m = DailyPlatformMetric(user_id=user_id, platform_id=pid, date=d)
-                    db.add(m)
-                
-                m.orders_count = int(cnt)
-                m.revenue = float(rev or 0)
-                m.fees = fees
-                m.cogs = cogs
-                m.returns_count = ret_cnt
-                m.return_value = ret_val
-                m.profit = float(rev or 0) - fees - cogs - ret_val
-                m.avg_order_value = float(rev)/float(cnt) if cnt else 0
-
-        # 2. Sync Product Metrics
-        prod_stats = db.query(
-            Order.product_id,
-            Order.order_date,
-            func.sum(Order.quantity).label("qty"),
-            func.sum(Order.amount).label("rev")
-        ).filter(Order.user_id == user_id).group_by(Order.product_id, Order.order_date).all()
+            # Product aggregates
+            pr_key = (o.product_id, d)
+            # Make sure we safely parse quantities even if they are null for some reason
+            qty = o.quantity if o.quantity else 1
+            product_stats[pr_key]['qty'] += int(qty)
+            product_stats[pr_key]['rev'] += float(o.amount or 0)
+            
+        # Clean existing metrics before rebuilding
+        db.query(DailyPlatformMetric).filter(DailyPlatformMetric.user_id == user_id).delete()
+        db.query(DailyProductSale).filter(DailyProductSale.user_id == user_id).delete()
         
-        for prid, d_val, qty, rev in prod_stats:
-            d = _to_date(d_val)
-            if not d: continue
+        # 1. Rebuild Platform Metrics
+        new_platform_metrics = []
+        for (pid, d), stats in platform_stats.items():
+            plat = platforms_dict.get(pid)
+            if not plat: continue
             
-            ps = db.query(DailyProductSale).filter_by(user_id=user_id, product_id=prid, date=d).first()
-            if not ps:
-                ps = DailyProductSale(user_id=user_id, product_id=prid, date=d)
-                db.add(ps)
-            ps.sales_count = int(qty or 0)
-            ps.revenue = float(rev or 0)
-
+            if not plat.is_active: plat.is_active = True
+            
+            rev = stats['rev']
+            cnt = stats['cnt']
+            
+            fees = rev * plat.fee_rate
+            cogs = rev * 0.40
+            ret_cnt = round(cnt * plat.avg_return_rate)
+            ret_val = rev * plat.avg_return_rate
+            profit = rev - fees - cogs - ret_val
+            aov = rev / cnt if cnt > 0 else 0
+            
+            m = DailyPlatformMetric(
+                user_id=user_id,
+                platform_id=pid,
+                date=d,
+                orders_count=cnt,
+                revenue=rev,
+                fees=fees,
+                cogs=cogs,
+                returns_count=ret_cnt,
+                return_value=ret_val,
+                profit=profit,
+                avg_order_value=aov
+            )
+            new_platform_metrics.append(m)
+            
+        # 2. Rebuild Product Metrics
+        new_product_metrics = []
+        for (prid, d), stats in product_stats.items():
+            ps = DailyProductSale(
+                user_id=user_id,
+                product_id=prid,
+                date=d,
+                sales_count=stats['qty'],
+                revenue=stats['rev']
+            )
+            new_product_metrics.append(ps)
+            
+        # Bulk save newly aggregated data
+        if new_platform_metrics: db.add_all(new_platform_metrics)
+        if new_product_metrics: db.add_all(new_product_metrics)
+        
         db.commit()
     except Exception as e:
         print(f"Sync error: {e}")
