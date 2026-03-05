@@ -53,18 +53,42 @@ export default function Overview() {
     const [platformSummaries, setPlatformSummaries] = useState([]);
     const [recentOrders, setRecentOrders] = useState([]);
     const [selectedPeriod, setSelectedPeriod] = useState('30d');
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    useEffect(() => {
+    const refreshData = useCallback(async () => {
         let days = 30;
         if (selectedPeriod === '7d') days = 7;
         if (selectedPeriod === '14d') days = 14;
         if (selectedPeriod === 'all') days = 9999;
 
-        loadKPIs(days).then(setKpis);
-        loadDailyData(days).then(setDaily);
-        loadPlatformSummaries().then(setPlatformSummaries);
-        loadOrders({ page: 1, perPage: 8 }).then(res => setRecentOrders(res.orders));
+        const [k, d, s, r] = await Promise.all([
+            loadKPIs(days),
+            loadDailyData(days),
+            loadPlatformSummaries(),
+            loadOrders({ page: 1, perPage: 8 })
+        ]);
+        setKpis(k);
+        setDaily(d);
+        setPlatformSummaries(s);
+        setRecentOrders(r.orders);
     }, [selectedPeriod]);
+
+    useEffect(() => {
+        refreshData();
+    }, [refreshData]);
+
+    const handleGlobalSync = async () => {
+        setIsSyncing(true);
+        try {
+            const { apiFetch } = await import('../services/api');
+            await apiFetch('/overview/sync-all', { method: 'POST' });
+            await refreshData();
+        } catch (err) {
+            console.error("Sync error:", err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     if (!kpis) return <div className="text-center py-20 text-[#5a5a6e]">Loading...</div>;
 
