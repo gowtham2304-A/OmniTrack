@@ -1,8 +1,8 @@
-# SellerVerse — Universal D2C Seller Dashboard
+# OmniTrack — Universal D2C Seller Dashboard
 
 <div align="center">
 
-![SellerVerse](https://img.shields.io/badge/SellerVerse-v1.0.0-7c3aed?style=for-the-badge&logo=lightning&logoColor=white)
+![OmniTrack](https://img.shields.io/badge/OmniTrack-v1.0.0-7c3aed?style=for-the-badge&logo=lightning&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react&logoColor=black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)
@@ -37,7 +37,7 @@
 ## 🗂️ Project Structure
 
 ```
-sellerverse/
+OmniTrack/
 ├── backend/                    # FastAPI Python backend
 │   ├── app/
 │   │   ├── main.py             # App entry point, router registration
@@ -109,7 +109,7 @@ sellerverse/
 
 ```bash
 git clone <repo-url>
-cd sellerverse
+cd OmniTrack
 ```
 
 ### 2. Backend Setup
@@ -149,7 +149,7 @@ Frontend runs at: **http://localhost:5173**
 
 | Email | Password |
 |---|---|
-| `admin@sellerverse.com` | `admin123` |
+| `admin@OmniTrack.com` | `admin123` |
 
 ---
 
@@ -162,7 +162,7 @@ Create a `.env` file in `backend/` for production settings:
 JWT_SECRET=your-super-secret-jwt-key-here
 
 # Fernet Encryption (auto-generated if missing, but set explicitly for production)
-SELLERVERSE_FERNET_KEY=your-fernet-key-here
+OmniTrack_FERNET_KEY=your-fernet-key-here
 
 # Email Reports (optional — daily summary at 8 AM IST)
 SMTP_USER=your-gmail@gmail.com
@@ -240,7 +240,7 @@ WhatsApp Commerce · Instagram Shopping · Facebook Marketplace
 User Password  ──► bcrypt (work factor 12) ──► DB
 JWT Token      ──► HS256 HMAC ──► 7-day expiry
 Platform Keys  ──► Fernet AES-128-CBC ──► DB (encrypted blob)
-                   └─ Key: .fernet_key file or SELLERVERSE_FERNET_KEY env var
+                   └─ Key: .fernet_key file or OmniTrack_FERNET_KEY env var
 ```
 
 ---
@@ -301,5 +301,5 @@ notifications           — In-app notification inbox
 ---
 
 <div align="center">
-Made with ⚡ by the SellerVerse team
+Made with ⚡ by the OmniTrack team
 </div>

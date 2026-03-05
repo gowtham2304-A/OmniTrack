@@ -15,7 +15,7 @@ import SettingsPage from './pages/Settings';
 import Signup from './pages/Signup';
 
 const ProtectedRoute = () => {
-  const token = localStorage.getItem('sellerverse_auth');
+  const token = localStorage.getItem('OmniTrack_auth');
   const isAuth = !!token;
   return isAuth ? (
     <Layout>

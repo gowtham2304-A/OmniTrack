@@ -51,7 +51,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                         animate={{ opacity: 1 }}
                     >
                         <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
-                            <img src="/logo.png" alt="SellerVerse Logo" className="w-full h-full object-cover" />
+                            <img src="/logo.png" alt="OmniTrack Logo" className="w-full h-full object-cover" />
                         </div>
                         <AnimatePresence>
                             {!collapsed && (
@@ -61,7 +61,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                                     exit={{ opacity: 0, x: -10 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <h1 className="text-base font-bold gradient-text whitespace-nowrap">SellerVerse</h1>
+                                    <h1 className="text-base font-bold gradient-text whitespace-nowrap">OmniTrack</h1>
                                     <p className="text-[10px] text-[#5a5a6e] whitespace-nowrap">Universal D2C Dashboard</p>
                                 </motion.div>
                             )}

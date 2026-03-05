@@ -10,7 +10,7 @@ def fetch_amazon_orders(seller_id: str, access_token: str, start_date: str) -> l
     url = f"https://sellingpartnerapi-eu.amazon.com/orders/v0/orders?CreatedAfter={start_date}"
     headers = {
         "x-amz-access-token": access_token,
-        "User-Agent": "SellerVerse/1.0 (Language=Python/3.10)"
+        "User-Agent": "OmniTrack/1.0 (Language=Python/3.10)"
     }
     
     # In a real environment, this makes the SP-API HTTP Request.

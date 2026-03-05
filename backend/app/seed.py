@@ -87,9 +87,9 @@ def seed_database(user_id: int = None, db: Session = None):
 
             # ── System User ───────────────────────────────
             admin_user = User(
-                email="admin@sellerverse.com",
+                email="admin@OmniTrack.com",
                 password_hash=get_password_hash("admin123"),
-                name="SellerVerse Admin",
+                name="OmniTrack Admin",
                 plan="free"
             )
             db.add(admin_user)

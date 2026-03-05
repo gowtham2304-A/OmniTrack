@@ -1,4 +1,4 @@
-"""SellerVerse - Universal D2C Seller Dashboard API"""
+"""OmniTrack - Universal D2C Seller Dashboard API"""
 import logging
 from contextlib import asynccontextmanager
 
@@ -19,7 +19,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logging.info("🚀 Starting SellerVerse API...")
+    logging.info("🚀 Starting OmniTrack API...")
     try:
         # Create tables on startup (if they don't exist)
         logging.info("📡 Connecting to database (URL: %s)...", engine.url.database if hasattr(engine.url, 'database') else "SQLite")
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SellerVerse API",
+    title="OmniTrack API",
     description="Universal D2C Seller Dashboard — Backend API",
     version="1.0.0",
     lifespan=lifespan,
@@ -79,7 +79,7 @@ app.include_router(search.router)
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"message": "SellerVerse API v1.0.0", "docs": "/docs"}
+    return {"message": "OmniTrack API v1.0.0", "docs": "/docs"}
 
 
 @app.get("/health")

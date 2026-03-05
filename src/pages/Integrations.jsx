@@ -189,7 +189,7 @@ export default function Integrations() {
                             </div>
                         </div>
                         <p className="text-sm text-gray-400 leading-relaxed mt-4">
-                            Connect your ecommerce accounts using secure API keys or Seller IDs to automatically sync orders, products, stock, and P&L metrics into your SellerVerse dashboard.
+                            Connect your ecommerce accounts using secure API keys or Seller IDs to automatically sync orders, products, stock, and P&L metrics into your OmniTrack dashboard.
                             Platforms marked <span className="text-amber-400 font-medium">CSV Only</span> require manual file uploads.
                         </p>
                     </GlassCard>
@@ -412,7 +412,7 @@ export default function Integrations() {
                                 <div className="rounded-lg p-3 mt-4 flex items-start gap-2" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
                                     <AlertCircle size={14} className="text-green-400 flex-shrink-0 mt-0.5" />
                                     <p className="text-xs text-green-400/80 leading-relaxed font-medium">
-                                        Your credentials are encrypted end-to-end and stored securely. SellerVerse uses read-only access to import your metrics.
+                                        Your credentials are encrypted end-to-end and stored securely. OmniTrack uses read-only access to import your metrics.
                                     </p>
                                 </div>
 

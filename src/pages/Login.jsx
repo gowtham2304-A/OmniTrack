@@ -13,7 +13,7 @@ export default function Login() {
 
     // Clear any existing auth on mount
     useEffect(() => {
-        localStorage.removeItem('sellerverse_auth');
+        localStorage.removeItem('OmniTrack_auth');
     }, []);
 
     const handleLogin = async (e) => {
@@ -51,19 +51,19 @@ export default function Login() {
                 });
                 if (meRes.ok) {
                     const userData = await meRes.json();
-                    localStorage.setItem('sellerverse_auth', JSON.stringify({
+                    localStorage.setItem('OmniTrack_auth', JSON.stringify({
                         token: data.access_token,
                         user: userData
                     }));
                 } else {
-                    localStorage.setItem('sellerverse_auth', data.access_token);
+                    localStorage.setItem('OmniTrack_auth', data.access_token);
                 }
             } catch (error) {
                 console.error('Failed to fetch user data after login:', error);
-                localStorage.setItem('sellerverse_auth', data.access_token);
+                localStorage.setItem('OmniTrack_auth', data.access_token);
             }
 
-            addToast('Welcome back to SellerVerse!', 'success');
+            addToast('Welcome back to OmniTrack!', 'success');
             navigate('/');
         } catch (error) {
             addToast(error.message || 'Login failed', 'error');
@@ -90,7 +90,7 @@ export default function Login() {
 
                     <div className="flex flex-col items-center mb-8">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg shadow-purple-500/20">
-                            <img src="/logo.png" alt="SellerVerse Logo" className="w-full h-full object-cover" />
+                            <img src="/logo.png" alt="OmniTrack Logo" className="w-full h-full object-cover" />
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
                         <p className="text-sm text-gray-400 text-center">
@@ -111,7 +111,7 @@ export default function Login() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     style={{ backgroundColor: '#111118', borderColor: email ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.1)', paddingLeft: '3.5rem' }}
                                     className="w-full border rounded-xl py-3.5 pr-4 text-sm text-white focus:border-purple-500/50 outline-none transition-all placeholder-gray-500 shadow-inner"
-                                    placeholder="admin@sellerverse.com"
+                                    placeholder="admin@OmniTrack.com"
                                 />
                             </div>
                         </div>

@@ -22,7 +22,7 @@ async function apiFetch(path, options = {}) {
     const isAvailable = await checkBackend();
     if (!isAvailable) return null;
 
-    let authData = localStorage.getItem('sellerverse_auth');
+    let authData = localStorage.getItem('OmniTrack_auth');
     let token = authData;
 
     // Check if authData is a JSON string (modern format)
@@ -49,7 +49,7 @@ async function apiFetch(path, options = {}) {
         });
         if (res.status === 401) {
             console.error('Session expired, logging out...');
-            localStorage.removeItem('sellerverse_auth');
+            localStorage.removeItem('OmniTrack_auth');
             // Only redirect if we're not already on login/signup to avoid loops
             if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
                 window.location.href = '/login';
@@ -138,7 +138,7 @@ export async function uploadCsv(file, platform = 'auto') {
     const isAvailable = await checkBackend();
     if (!isAvailable) return null;
 
-    let authData = localStorage.getItem('sellerverse_auth');
+    let authData = localStorage.getItem('OmniTrack_auth');
     let token = authData;
     if (authData && authData.startsWith('{')) {
         try {

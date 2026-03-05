@@ -1,5 +1,5 @@
 """
-Background scheduler for SellerVerse.
+Background scheduler for OmniTrack.
 - Auto-sync connected platforms every 6 hours
 - Daily email summary reports at 8 AM IST
 """
@@ -15,7 +15,7 @@ from ..database import SessionLocal
 from ..models import PlatformConnection, SyncLog, DailyPlatformMetric, Order
 from ..services.crypto import send_daily_report
 
-logger = logging.getLogger("sellerverse.scheduler")
+logger = logging.getLogger("OmniTrack.scheduler")
 
 
 # ── Platform Auto-Sync ───────────────────────────────────

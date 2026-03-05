@@ -40,12 +40,12 @@ export default function Signup() {
             if (!res.ok) throw new Error(data.detail || 'Registration failed');
 
             // Store token and user info
-            localStorage.setItem('sellerverse_auth', JSON.stringify({
+            localStorage.setItem('OmniTrack_auth', JSON.stringify({
                 token: data.access_token,
                 user: data.user
             }));
 
-            addToast(`Welcome to SellerVerse, ${data.user.name}! 🎉`, 'success');
+            addToast(`Welcome to OmniTrack, ${data.user.name}! 🎉`, 'success');
             navigate('/');
         } catch (err) {
             addToast(err.message, 'error');
@@ -73,10 +73,10 @@ export default function Signup() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden border border-[rgba(124,58,237,0.4)] shadow-lg shadow-purple-500/20">
-                        <img src="/logo.png" alt="SellerVerse Logo" className="w-full h-full object-cover" />
+                        <img src="/logo.png" alt="OmniTrack Logo" className="w-full h-full object-cover" />
                     </div>
                     <h1 className="text-2xl font-bold text-white">Create your account</h1>
-                    <p className="text-sm text-gray-500 mt-1">Join SellerVerse — the universal D2C dashboard</p>
+                    <p className="text-sm text-gray-500 mt-1">Join OmniTrack — the universal D2C dashboard</p>
                 </div>
 
                 {/* No Step Indicators needed for single step */}

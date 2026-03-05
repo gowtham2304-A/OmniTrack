@@ -1,1 +1,1 @@
-"""SellerVerse Backend - FastAPI + PostgreSQL"""
+"""OmniTrack Backend - FastAPI + PostgreSQL"""

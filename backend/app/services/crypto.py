@@ -13,14 +13,14 @@ from email import encoders
 from datetime import date, timedelta
 from cryptography.fernet import Fernet
 
-logger = logging.getLogger("sellerverse.crypto")
+logger = logging.getLogger("OmniTrack.crypto")
 
 # ── Fernet Key Management ────────────────────────────────
 # In production put FERNET_KEY in your .env file.
 # We auto-generate and persist one in .fernet_key if missing.
 
 _FERNET_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", ".fernet_key")
-_FERNET_KEY_ENV = "SELLERVERSE_FERNET_KEY"
+_FERNET_KEY_ENV = "OmniTrack_FERNET_KEY"
 
 
 def _get_or_create_fernet_key() -> bytes:
@@ -102,14 +102,14 @@ def send_daily_report(summary: dict) -> bool:
     returns     = summary.get("returns", 0)
     margin      = round((profit / revenue * 100), 1) if revenue else 0
 
-    subject = f"SellerVerse Daily Report — {report_date}"
+    subject = f"OmniTrack Daily Report — {report_date}"
 
     html_body = f"""
     <html><body style="font-family:Arial,sans-serif;background:#0a0a0f;color:#e0e0e0;padding:24px;">
     <div style="max-width:600px;margin:auto;background:#13131a;border-radius:16px;overflow:hidden;
                 border:1px solid rgba(255,255,255,0.08);">
       <div style="background:linear-gradient(135deg,#7c3aed,#2563eb);padding:24px;text-align:center;">
-        <h1 style="color:#fff;margin:0;font-size:22px;">⚡ SellerVerse</h1>
+        <h1 style="color:#fff;margin:0;font-size:22px;">⚡ OmniTrack</h1>
         <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;">Daily Summary — {report_date}</p>
       </div>
       <div style="padding:24px;">
@@ -141,7 +141,7 @@ def send_daily_report(summary: dict) -> bool:
           <strong style="font-size:32px;color:#7c3aed;">{margin}%</strong>
         </div>
         <p style="color:#5a5a6e;font-size:11px;text-align:center;margin-top:16px;">
-          Login to <a href="http://localhost:5173" style="color:#7c3aed;">SellerVerse Dashboard</a>
+          Login to <a href="http://localhost:5173" style="color:#7c3aed;">OmniTrack Dashboard</a>
           for detailed analytics.
         </p>
       </div>
@@ -150,7 +150,7 @@ def send_daily_report(summary: dict) -> bool:
     """
 
     text_body = (
-        f"SellerVerse Daily Report — {report_date}\n"
+        f"OmniTrack Daily Report — {report_date}\n"
         f"Revenue: ₹{revenue:,.0f}\n"
         f"Profit:  ₹{profit:,.0f}\n"
         f"Orders:  {orders}\n"
