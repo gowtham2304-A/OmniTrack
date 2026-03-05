@@ -23,11 +23,11 @@ const fileTypes = {
 const downloadCsvTemplate = (platform) => {
     let csvContent = "";
     if (platform === 'Amazon') {
-        csvContent = "order_id,order_date,sku,product_name,category,quantity,item_price,tax,shipping_fee,city,state,order_status\nAMZ-1001,2026-03-01,SKU-A1,Wireless Earbuds,Electronics,1,1999,359,40,Mumbai,MH,Shipped";
+        csvContent = "amazon-order-id,sku,product-name,quantity-purchased,item-price,purchase-date\nAMZ-1001,SKU-A1,Wireless Earbuds,1,1999,2026-03-01";
     } else if (platform === 'Flipkart') {
         csvContent = "Order_ID,Order_Date,Seller_SKU,Product_Title,Vertical,Qty,Selling_Price,Shipping_Charge,Customer_City,Customer_State,Status\nFLK-9002,2026-03-02,SKU-B2,Running Shoes,Footwear,1,1499,50,Delhi,DL,Delivered";
     } else {
-        csvContent = "sub_order_no,order_date,sku,product_name,qty,product_price,shipping_charges,customer_city,customer_state,order_status\nMES-5050,2026-03-03,SKU-C3,Cotton Kurta,Apparel,2,599,0,Bangalore,KA,Delivered";
+        csvContent = "Sub Order No,Product Name,Quantity,Final Selling Price,Order Date,Status,Return Status\nMES-5050,Cotton Kurta,2,599,2026-03-03,Delivered,Not Returned";
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

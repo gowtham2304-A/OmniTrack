@@ -167,6 +167,20 @@ def upload_csv(
         rows_processed = len(df)
         orders_created = 0
 
+        # Auto-detect platform from contents if generic or standard
+        cols_text = " ".join(df.columns.astype(str).str.lower())
+        if platform == "auto":
+            if "amazon-order-id" in cols_text or "asin" in cols_text:
+                platform = "amazon"
+            elif "sub order no" in cols_text or "meesho" in cols_text:
+                platform = "meesho"
+            elif "fsn" in cols_text or "flipkart" in cols_text:
+                platform = "flipkart"
+            elif "style id" in cols_text and "myntra" in cols_text:
+                platform = "myntra"
+            elif "nykaa" in cols_text:
+                platform = "nykaa"
+
         # Pre-fetch or Create Platform
         target_platform_slug = platform if platform != "auto" else "other"
         plat = db.query(Platform).filter(Platform.slug == target_platform_slug, Platform.user_id == current_user.id).first()
