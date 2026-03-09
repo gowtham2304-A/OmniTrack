@@ -1,4 +1,5 @@
 """User registration + profile endpoints."""
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Union, Optional
 from jose import jwt
@@ -111,24 +112,15 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    # Initialize standard platforms for the new user
-    from ..seed import PLATFORMS_DATA, ACTIVE_PLATFORM_SLUGS
-    for p_data in PLATFORMS_DATA:
-        from ..models import Platform
-        plat = Platform(
-            user_id=user.id,
-            slug=p_data["slug"],
-            name=p_data["name"],
-            color=p_data.get("color", "#7c3aed"),
-            icon=p_data.get("icon", "📦"),
-            category=p_data.get("category", "india"),
-            fee_rate=p_data.get("fee_rate", 0.0),
-            avg_return_rate=p_data.get("avg_return_rate", 0.05),
-            is_active=p_data["slug"] in ACTIVE_PLATFORM_SLUGS
-        )
-        db.add(plat)
-    
-    db.commit()
+    # Initialize demodata for the new user
+    try:
+        from ..seed import seed_database
+        seed_database(user_id=user.id, db=db)
+        logging.info("✅ Auto-seeded demo data for new user: %s", user.email)
+    except Exception as seed_err:
+        logging.error("⚠️ Failed to auto-seed user %s: %s", user.email, seed_err)
+        # We continue anyway because the user account is already created
+        pass
 
 
     token = create_access_token(subject=user.id)

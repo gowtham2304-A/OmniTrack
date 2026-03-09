@@ -28,7 +28,8 @@ export default function Login() {
             formData.append('username', email);
             formData.append('password', password);
 
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const API_BASE = import.meta.env.VITE_API_URL ||
+                (window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://omnitrack.onrender.com');
             const response = await fetch(`${API_BASE}/api/auth/token`, {
                 method: 'POST',
                 headers: {
