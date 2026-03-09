@@ -68,11 +68,12 @@ STATUS_COLORS = {
 }
 
 
-def seed_database(user_id: int = None, db: Session = None):
+def seed_database(user_id: int = None, db: Session = None, only_metadata: bool = False):
     """
     Seed the database with realistic sample data.
     If user_id is provided, it increments/adds data ONLY for that user.
     If db is provided, it uses that session instead of creating a new one.
+    If only_metadata is True, it only creates basic platforms/products with 0 sales.
     """
     own_db = False
     if db is None:
@@ -125,92 +126,94 @@ def seed_database(user_id: int = None, db: Session = None):
             product_list.append(pr)
         print(f"✓ Seeded {len(product_list)} products for user {user_id}")
 
-        # ── Daily Platform Metrics (30 days) ──────────
-        today = date.today()
-        daily_metrics_count = 0
-        for day_offset in range(29, -1, -1):
-            d = today - timedelta(days=day_offset)
-            is_weekend = d.weekday() in (5, 6)
-            season_mult = 1 + math.sin(day_offset / 5) * 0.2
-
-            for slug in ACTIVE_PLATFORM_SLUGS:
-                plat = platform_map[slug]
-                base = BASE_ORDERS.get(slug, 10)
-                orders_count = round(base * (0.7 + random.random() * 0.6) * season_mult * (1.3 if is_weekend else 1))
-                aov = 500 + random.random() * 800
-                revenue = round(orders_count * aov)
-                fees = round(revenue * plat.fee_rate)
-                cogs = round(revenue * (0.35 + random.random() * 0.1))
-                returns_count = round(orders_count * plat.avg_return_rate * (0.8 + random.random() * 0.4))
-                return_value = round(returns_count * aov * 0.9)
-                profit = revenue - fees - cogs - return_value
-
-                metric = DailyPlatformMetric(
-                    user_id=user_id,
-                    platform_id=plat.id, date=d,
-                    orders_count=orders_count, revenue=revenue,
-                    fees=fees, cogs=cogs, returns_count=returns_count,
-                    return_value=return_value, profit=profit,
-                    avg_order_value=round(aov),
-                )
-                db.add(metric)
-                daily_metrics_count += 1
-
-        print(f"✓ Seeded {daily_metrics_count} daily platform metrics")
-
-        # ── Daily Product Sales (30 days) ─────────────
-        product_sales_count = 0
-        for prod_idx, prod in enumerate(product_list):
+        if not only_metadata:
+            # ── Daily Platform Metrics (30 days) ──────────
+            today = date.today()
+            daily_metrics_count = 0
             for day_offset in range(29, -1, -1):
                 d = today - timedelta(days=day_offset)
-                base_sales = round((30 - prod_idx * 2) * (0.6 + random.random() * 0.8))
-                sales = max(1, base_sales)
-                rev = sales * prod.selling_price
-                ds = DailyProductSale(
+                is_weekend = d.weekday() in (5, 6)
+                season_mult = 1 + math.sin(day_offset / 5) * 0.2
+
+                for slug in ACTIVE_PLATFORM_SLUGS:
+                    plat = platform_map[slug]
+                    base = BASE_ORDERS.get(slug, 10)
+                    orders_count = round(base * (0.7 + random.random() * 0.6) * season_mult * (1.3 if is_weekend else 1))
+                    aov = 500 + random.random() * 800
+                    revenue = round(orders_count * aov)
+                    fees = round(revenue * plat.fee_rate)
+                    cogs = round(revenue * (0.35 + random.random() * 0.1))
+                    returns_count = round(orders_count * plat.avg_return_rate * (0.8 + random.random() * 0.4))
+                    return_value = round(returns_count * aov * 0.9)
+                    profit = revenue - fees - cogs - return_value
+
+                    metric = DailyPlatformMetric(
+                        user_id=user_id,
+                        platform_id=plat.id, date=d,
+                        orders_count=orders_count, revenue=revenue,
+                        fees=fees, cogs=cogs, returns_count=returns_count,
+                        return_value=return_value, profit=profit,
+                        avg_order_value=round(aov),
+                    )
+                    db.add(metric)
+                    daily_metrics_count += 1
+
+            print(f"✓ Seeded {daily_metrics_count} daily platform metrics")
+
+        if not only_metadata:
+            # ── Daily Product Sales (30 days) ─────────────
+            product_sales_count = 0
+            for prod_idx, prod in enumerate(product_list):
+                for day_offset in range(29, -1, -1):
+                    d = today - timedelta(days=day_offset)
+                    base_sales = round((30 - prod_idx * 2) * (0.6 + random.random() * 0.8))
+                    sales = max(1, base_sales)
+                    rev = sales * prod.selling_price
+                    ds = DailyProductSale(
+                        user_id=user_id,
+                        product_id=prod.id, date=d,
+                        sales_count=sales, revenue=rev,
+                    )
+                    db.add(ds)
+                    product_sales_count += 1
+
+            print(f"✓ Seeded {product_sales_count} daily product sales")
+
+            # ── Orders (50 sample) ────────────────────────
+            order_count = 0
+            for i in range(50):
+                prod = random.choice(product_list)
+                slug = random.choice(ACTIVE_PLATFORM_SLUGS)
+                plat = platform_map[slug]
+                status = random.choice(STATUSES[:3] if i < 10 else STATUSES)
+                qty = 1 + random.randint(0, 2)
+                order_dt = datetime.utcnow() - timedelta(hours=random.randint(0, 72))
+
+                order = Order(
                     user_id=user_id,
-                    product_id=prod.id, date=d,
-                    sales_count=sales, revenue=rev,
+                    order_id=f"ORD-{user_id}-{10000 + i}",
+                    product_id=prod.id, platform_id=plat.id,
+                    customer_name=f"Customer {1000 + i}",
+                    city=random.choice(CITIES),
+                    quantity=qty, amount=prod.selling_price * qty,
+                    status=status, order_date=order_dt,
                 )
-                db.add(ds)
-                product_sales_count += 1
+                db.add(order)
+                order_count += 1
 
-        print(f"✓ Seeded {product_sales_count} daily product sales")
+            print(f"✓ Seeded {order_count} orders")
 
-        # ── Orders (50 sample) ────────────────────────
-        order_count = 0
-        for i in range(50):
-            prod = random.choice(product_list)
-            slug = random.choice(ACTIVE_PLATFORM_SLUGS)
-            plat = platform_map[slug]
-            status = random.choice(STATUSES[:3] if i < 10 else STATUSES)
-            qty = 1 + random.randint(0, 2)
-            order_dt = datetime.utcnow() - timedelta(hours=random.randint(0, 72))
+            # ── Cost Entries (30 days) ────────────────────
+            cost_count = 0
+            for day_offset in range(29, -1, -1):
+                d = today - timedelta(days=day_offset)
+                for category, base in [("shipping", 4000), ("marketing", 6000), ("packaging", 1500)]:
+                    amount = round(base * (0.8 + random.random() * 0.4))
+                    ce = CostEntry(user_id=user_id, date=d, category=category, amount=amount)
+                    db.add(ce)
+                    cost_count += 1
 
-            order = Order(
-                user_id=user_id,
-                order_id=f"ORD-{user_id}-{10000 + i}",
-                product_id=prod.id, platform_id=plat.id,
-                customer_name=f"Customer {1000 + i}",
-                city=random.choice(CITIES),
-                quantity=qty, amount=prod.selling_price * qty,
-                status=status, order_date=order_dt,
-            )
-            db.add(order)
-            order_count += 1
-
-        print(f"✓ Seeded {order_count} orders")
-
-        # ── Cost Entries (30 days) ────────────────────
-        cost_count = 0
-        for day_offset in range(29, -1, -1):
-            d = today - timedelta(days=day_offset)
-            for category, base in [("shipping", 4000), ("marketing", 6000), ("packaging", 1500)]:
-                amount = round(base * (0.8 + random.random() * 0.4))
-                ce = CostEntry(user_id=user_id, date=d, category=category, amount=amount)
-                db.add(ce)
-                cost_count += 1
-
-        print(f"✓ Seeded {cost_count} cost entries")
+            print(f"✓ Seeded {cost_count} cost entries")
 
         db.commit()
         print(f"\n🚀 Database seeded successfully for user {user_id}!")

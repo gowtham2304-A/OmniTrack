@@ -115,8 +115,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     # Initialize demodata for the new user
     try:
         from ..seed import seed_database
-        seed_database(user_id=user.id, db=db)
-        logging.info("✅ Auto-seeded demo data for new user: %s", user.email)
+        seed_database(user_id=user.id, db=db, only_metadata=True)
+        logging.info("✅ Initialized clean dashboard for new user: %s", user.email)
     except Exception as seed_err:
         logging.error("⚠️ Failed to auto-seed user %s: %s", user.email, seed_err)
         # We continue anyway because the user account is already created
