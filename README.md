@@ -11,7 +11,7 @@
 
 **A production-grade analytics dashboard for D2C sellers managing multiple e-commerce platforms.**
 
-### 🟢 [Live Demo: sellerverse.vercel.app](https://sellerverse.vercel.app/)
+### 🟢 [Live Demo: OmniTrack.vercel.app](https://omni-track-ten.vercel.app/)
 
 </div>
 
